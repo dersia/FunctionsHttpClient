@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
@@ -11,25 +9,15 @@ namespace FunctionsHttpClient
 {
     public class FunctionsHttpClient : IDisposable
     {
-        private static HttpClient _httpClient;
-        private static List<HttpMessageHandler> _handlers = new List<HttpMessageHandler>();
-        private static bool _disposeHandler = false;
+        private static HttpClient _httpClient = new HttpClient(_delegatingHandler, true);
+        private static InnerHttpMessageHandler _delegatingHandler = new InnerHttpMessageHandler();
         public FunctionsHttpClient()
         {
-            _httpClient = new HttpClient();
         }
 
         public FunctionsHttpClient(HttpMessageHandler handler)
         {
-            _httpClient = new HttpClient(handler);
-            _handlers.Add(handler);
-        }
-
-        public FunctionsHttpClient(HttpMessageHandler handler, bool disposeHandler)
-        {
-            _httpClient = new HttpClient(handler, disposeHandler);
-            _handlers.Add(handler);
-            _disposeHandler = disposeHandler;
+            _delegatingHandler.InnerHandler = handler;
         }
 
         public static FunctionsHttpClient AuthPassthrough(HttpRequestMessage req, bool overrideAuth = false, HttpMessageHandler handler = null)
@@ -106,14 +94,8 @@ namespace FunctionsHttpClient
 
         public void Dispose()
         {
-            if(_disposeHandler && _handlers.Any())
-            {
-                foreach(var handler in _handlers)
-                {
-                    handler.Dispose();
-                }
-            }
+            _delegatingHandler.Dispose();
+            _delegatingHandler = new InnerHttpMessageHandler();
         }
-
     }
 }
